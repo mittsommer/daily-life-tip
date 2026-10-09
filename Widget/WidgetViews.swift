@@ -90,9 +90,7 @@ struct LifeWidgetView: View {
             // 任何一条被显示出来的时候它就是今天；ShuffleIntent 也是按点击时的
             // Date() 算的，跟这条是哪天铺的无关。
             if showsControls {
-                // 小尺寸不放分享：系统把小尺寸整块当成一个点击区域，里面的 Link 不保证点得到，
-                // 位置也挤。小尺寸要分享走菜单栏。
-                if family != .systemSmall { shareButton }
+                shareButton
                 shuffleButton
             }
         }
@@ -204,6 +202,10 @@ struct LifeWidgetView: View {
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // 小尺寸被系统当成一整块点击区域，里面的 Link 不保证单独响应。
+        // 所以整块的点击也设成分享：就算分享按钮本身没被单独认出来，点到它也一样分享。
+        // 「换一条」是 AppIntent 按钮，不受这个影响，照样单独响应。
+        .widgetURL(URL(string: "lifewidget://share"))
     }
 
     // MARK: 中尺寸 —— 主力形态
