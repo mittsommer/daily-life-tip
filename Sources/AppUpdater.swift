@@ -71,7 +71,9 @@ enum AppUpdater {
         } catch let e as UpdateError where e.errorDescription == "HTTP 404" {
             return .failed("仓库里还没有发布过版本")
         } catch {
-            return .failed(error.localizedDescription)
+            // API 不通就走网页跳转。最常见的原因是限额：未登录的 API 每个 IP 每小时 60 次，
+            // 公司网络、VPN 出口是很多人共用一个 IP，经常早就被别人用光了（实测踩到过）。
+            return checkViaRedirect() ?? .failed(error.localizedDescription)
         }
         let dec = JSONDecoder()
         dec.keyDecodingStrategy = .convertFromSnakeCase
@@ -89,6 +91,41 @@ enum AppUpdater {
             notes: gh.body ?? "",
             dmgURL: dmg,
             pageURL: gh.htmlUrl.flatMap(URL.init(string:))))
+    }
+
+    /// 不走 API 的退路：github.com/<repo>/releases/latest 这个网页会 302 到
+    /// /releases/tag/v1.2.3，跳转后的地址里就有版本号。网页不受 API 限额约束。
+    ///
+    /// 拿不到更新说明（那个只有 API 给），dmg 地址按 package.sh 的命名规则拼：
+    /// LifeWidget-<版本>.dmg —— 改了那边的文件名，这里要跟着改。
+    /// 没配仓库时返回 nil。测这条路：配好仓库、把 LIFEWIDGET_UPDATE_API 指到连不上的地址。
+    private static func checkViaRedirect() -> CheckResult? {
+        guard !repo.isEmpty,
+              let page = URL(string: "https://github.com/\(repo)/releases/latest") else { return nil }
+
+        let sem = DispatchSemaphore(value: 0)
+        var finalURL: URL?
+        var req = URLRequest(url: page)
+        req.httpMethod = "HEAD"
+        req.timeoutInterval = 15
+        URLSession.shared.dataTask(with: req) { _, resp, _ in
+            defer { sem.signal() }
+            if let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) { finalURL = http.url }
+        }.resume()
+        guard sem.wait(timeout: .now() + 20) == .success, let finalURL else { return nil }
+
+        // 没发布过版本时会跳到 /releases 而不是 /releases/tag/…
+        let parts = finalURL.pathComponents
+        guard let i = parts.firstIndex(of: "tag"), i + 1 < parts.count else {
+            return .failed("仓库里还没有发布过版本")
+        }
+        let tag = parts[i + 1]
+        let version = tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV "))
+        guard isNewer(version, than: currentVersion) else { return .upToDate(latest: version) }
+        guard let dmg = URL(string: "https://github.com/\(repo)/releases/download/\(tag)/LifeWidget-\(version).dmg") else {
+            return nil
+        }
+        return .available(Release(version: version, notes: "", dmgURL: dmg, pageURL: finalURL))
     }
 
     /// 按点分段逐段比数字：1.10.0 比 1.9.0 新（按字符串比就错了）。
