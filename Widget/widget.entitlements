@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- 必需。不带这个 pkd 直接拒收，日志是
+       "rejecting; Ignoring mis-configured plugin: plug-ins must be sandboxed" -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+
+  <!-- 网络：只有宿主 app 联网（联网更新书稿）。小组件不联网，
+       数据编译在二进制里，所以这里给不给都不影响小组件出内容。 -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+
+  <!-- 读写真实家目录下的 Application Support。
+       原来这里是 read-only，小组件读得到宿主 app 拉的缓存、却写不进「换一条」的覆盖，
+       而写入失败被 try? 吞掉，表现就是按钮点得动、小组件永远不变。
+       现在小组件写这里，宿主 app（非沙盒）读这里，一进一出同一个位置。 -->
+  <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>
+  <array>
+    <string>/Library/Application Support/LifeWidget/</string>
+  </array>
+
+  <!-- App Group 只作历史保留。ad-hoc 签名（没有 Team ID）下它其实用不了：
+       containerURL 照样返回路径、containermanagerd 也回 success，但真去读写会被
+       TCC 拒（kTCCServiceSystemPolicyAppData），实测还会挂起等授权弹窗。
+       代码里已经不走它了，见 SharedPaths.dirs()。留着是因为删掉不改变行为。 -->
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>group.com.local.lifewidget</string>
+  </array>
+</dict>
+</plist>

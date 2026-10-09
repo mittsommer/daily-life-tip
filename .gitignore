@@ -1,0 +1,10 @@
+# 构建产物
+build/
+dist/
+
+# 书稿快照和由它生成的数据：构建时自动从 eternity4719/HowToLiveBetter 拉取并生成
+book/
+data/
+Widget/BookData.swift
+
+.DS_Store
