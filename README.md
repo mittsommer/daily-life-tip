@@ -44,6 +44,7 @@ UPDATE_REPO=mittsommer/daily-life-tip VERSION=1.1.0 ./release.sh
 - 交互式按钮（AppIntent）需要 `Metadata.appintents`，这个通常由 Xcode 生成，这里用 `tools/embed-appintents.mjs` 手工生成。缺了它按钮能点、但什么都不发生
 - 小组件的 `UserDefaults` 跟宿主 app 不通，共享状态要走文件
 
-## 版权
+## 许可
 
-书的内容来自 [eternity4719/HowToLiveBetter](https://github.com/eternity4719/HowToLiveBetter)，采用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 协议。本仓库不包含书稿本身，构建时从原仓库拉取。
+- **代码**：[MIT](LICENSE)
+- **书的内容**：来自 [eternity4719/HowToLiveBetter](https://github.com/eternity4719/HowToLiveBetter)，采用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 协议，不受上面 MIT 协议约束。本仓库不包含书稿本身，构建时从原仓库拉取；但编译出的 app 里内置了一份，再分发时请保留出处。
