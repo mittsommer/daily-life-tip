@@ -78,7 +78,7 @@ struct LifeWidgetView: View {
     // MARK: 公共小块
 
     private var header: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 6) {
             Text(BookData.bookTitle)
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(.secondary)
@@ -124,11 +124,13 @@ struct LifeWidgetView: View {
         .help("换一条")
     }
 
+    /// 右上角那两个圆形按钮（分享 / 换一条）。
+    /// 尺寸从 17 调到 22：17 的时候图标只有 8.5 磅，在桌面上看着偏小、不好瞄准。
     private func circleIcon(_ symbol: String) -> some View {
         Image(systemName: symbol)
-            .font(.system(size: 8.5, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(.secondary)
-            .frame(width: 17, height: 17)
+            .frame(width: 22, height: 22)
             .background(Circle().fill(Color.primary.opacity(0.09)))
     }
 
