@@ -2,6 +2,11 @@
 
 一个 macOS 桌面小组件：每天从《[高性价比人生指南](https://github.com/eternity4719/HowToLiveBetter)》里给你一条建议。
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img alt="中、小、大三种尺寸的桌面小组件" src="docs/screenshot-light.png">
+</picture>
+
 - 三种尺寸：小（只有标题）、中（标题 + 说人话）、大（成本 / 收益 / 证据等级 / 来源）
 - 两种选条方式，在菜单栏切换：
   - **顺序一条**：从第 1 条开始，每天往后一条，把整本书读完
@@ -29,6 +34,7 @@
 ./build.sh      # 构建到 build/LifeWidget.app（第一次会自动拉取书稿）
 ./selftest.sh   # 小组件那一侧的离线自检
 ./install.sh    # 构建并装到 /Applications、注册小组件
+./screenshot.sh # 重新生成 README 里的截图
 ```
 
 发布新版本：

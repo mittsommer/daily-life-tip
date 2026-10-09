@@ -97,8 +97,13 @@ struct DailyProvider: TimelineProvider {
 // MARK: - 小组件
 
 struct LifeWidgetView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var envFamily
     var entry: DailyEntry
+    /// 只给 tools/render-screenshot.swift 用：widgetFamily 是只读环境值，
+    /// 离屏渲染 README 截图时没法从外面设，只能走这里。小组件里不传。
+    var familyOverride: WidgetFamily? = nil
+
+    private var family: WidgetFamily { familyOverride ?? envFamily }
 
     var body: some View {
         Group {
