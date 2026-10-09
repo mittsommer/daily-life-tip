@@ -7,10 +7,8 @@
   <key>com.apple.security.app-sandbox</key>
   <true/>
 
-  <!-- 网络：只有宿主 app 联网（联网更新书稿）。小组件不联网，
-       数据编译在二进制里，所以这里给不给都不影响小组件出内容。 -->
-  <key>com.apple.security.network.client</key>
-  <true/>
+  <!-- 不申请网络权限：小组件从不联网（数据编译在二进制里，联网更新书稿在宿主 app 做）。
+       以前带着 network.client，没用到，权限越少越好。 -->
 
   <!-- 读写真实家目录下的 Application Support。
        原来这里是 read-only，小组件读得到宿主 app 拉的缓存、却写不进「换一条」的覆盖，

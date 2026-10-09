@@ -19,7 +19,7 @@ mkdir -p build
 swiftc -O -target "${TARGET}" \
   -D SELFTEST \
   -framework SwiftUI -framework WidgetKit -framework AppIntents \
-  Sources/Shared.swift Widget/BookData.swift Widget/LifeWidget.swift tools/widget-selftest.swift \
+  Sources/Shared.swift Widget/BookData.swift Widget/WidgetViews.swift Widget/LifeWidget.swift tools/widget-selftest.swift \
   -o "${OUT}"
 
 echo

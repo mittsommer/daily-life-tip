@@ -45,6 +45,8 @@ fi
 APP_SOURCES=(
   Sources/Shared.swift
   Widget/BookData.swift
+  Widget/WidgetViews.swift
+  Sources/ShareCard.swift
   Sources/RemoteBook.swift
   Sources/AppUpdater.swift
   Sources/main.swift
@@ -55,6 +57,7 @@ APP_SOURCES=(
 WIDGET_SOURCES=(
   Sources/Shared.swift
   Widget/BookData.swift
+  Widget/WidgetViews.swift
   Widget/LifeWidget.swift
 )
 
@@ -77,7 +80,7 @@ mkdir -p "${APP}/Contents/MacOS" "${APP}/Contents/Resources"
 
 echo "==> 编译主程序 (${ARCHS}, macOS ${MIN_MACOS}+)"
 compile "${APP}/Contents/MacOS/${APP_NAME}" \
-  -framework AppKit -framework SwiftUI -framework WidgetKit \
+  -framework AppKit -framework SwiftUI -framework WidgetKit -framework AppIntents \
   "${APP_SOURCES[@]}"
 
 cat > "${APP}/Contents/Info.plist" <<PLIST
@@ -100,6 +103,12 @@ cat > "${APP}/Contents/Info.plist" <<PLIST
   <key>NSHumanReadableCopyright</key><string>正文 CC BY 4.0 · eternity4719/HowToLiveBetter</string>
   <!-- 菜单栏常驻：不进 Dock、不占 App 切换器 -->
   <key>LSUIElement</key><true/>
+  <!-- lifewidget://share：小组件上的分享按钮靠它把宿主 app 叫起来 -->
+  <key>CFBundleURLTypes</key>
+  <array><dict>
+    <key>CFBundleURLName</key><string>${BUNDLE_ID}</string>
+    <key>CFBundleURLSchemes</key><array><string>lifewidget</string></array>
+  </dict></array>
   <!-- app 自身更新：去这个仓库的 GitHub Releases 查新版本 -->
   <key>LWUpdateRepo</key><string>${UPDATE_REPO}</string>
 </dict>

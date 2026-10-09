@@ -10,7 +10,7 @@ mkdir -p build
 swiftc -O -target "$(uname -m)-apple-macosx14.0" \
   -D SELFTEST \
   -framework SwiftUI -framework WidgetKit -framework AppIntents \
-  Sources/Shared.swift Widget/BookData.swift Widget/LifeWidget.swift tools/render-screenshot.swift \
+  Sources/Shared.swift Widget/BookData.swift Widget/WidgetViews.swift Widget/LifeWidget.swift tools/render-screenshot.swift \
   -o build/render-screenshot
 
 # 状态指到临时目录：渲染不该碰用户的真实设置（见 selftest.sh）

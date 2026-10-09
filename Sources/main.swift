@@ -9,6 +9,7 @@ import WidgetKit
 //   2. 联网更新书稿（WidgetKit 的时间线预算做不了这个）
 //   3. 不跑它，小组件照样显示 —— 数据编译在二进制里，这一点跟 sc-usage-widget 不同
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var window: NSWindow?
@@ -88,6 +89,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // --share-image <路径>：把今天这条的分享图写到文件（加 --dark 画深色）。
+        // 存在的理由跟 --shuffle 一样：分享面板要人手点，图片本身能在脚本里验。
+        if let i = CommandLine.arguments.firstIndex(of: "--share-image") {
+            let path = CommandLine.arguments.count > i + 1 ? CommandLine.arguments[i + 1] : "share.png"
+            let dark = CommandLine.arguments.contains("--dark")
+            if let item = Book.today(), let data = ShareCard.png(for: item, dark: dark),
+               (try? data.write(to: URL(fileURLWithPath: path))) != nil {
+                print("已写入 \(path)：\(item.t)")
+            } else {
+                print("生成失败")
+            }
+            NSApp.terminate(nil)
+            return
+        }
+
         // --selftest <book目录>：比对两套解析器
         if let idx = CommandLine.arguments.firstIndex(of: "--selftest") {
             let dir = CommandLine.arguments.count > idx + 1
@@ -126,7 +142,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 安静地查，查到了只在菜单里亮出来，不弹窗打断人。
         checkAppUpdate(quiet: true)
         Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
-            self?.checkAppUpdate(quiet: true)
+            // 定时器挂在主线程的 run loop 上，回调本来就在主线程
+            MainActor.assumeIsolated { self?.checkAppUpdate(quiet: true) }
         }
     }
 
@@ -177,9 +194,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         detail.target = self
         menu.addItem(detail)
 
-        let copy = NSMenuItem(title: "复制今天这条", action: #selector(copyToday(_:)), keyEquivalent: "c")
+        let copy = NSMenuItem(title: "复制今天这条（文字）", action: #selector(copyToday(_:)), keyEquivalent: "c")
         copy.target = self
         menu.addItem(copy)
+
+        let copyImage = NSMenuItem(title: "复制今天这条（图片）", action: #selector(copyTodayImage(_:)), keyEquivalent: "C")
+        copyImage.target = self
+        menu.addItem(copyImage)
+
+        let share = NSMenuItem(title: "分享今天这条…", action: #selector(shareToday(_:)), keyEquivalent: "s")
+        share.target = self
+        menu.addItem(share)
 
         menu.addItem(.separator())
 
@@ -319,6 +344,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(text, forType: .string)
+    }
+
+    // MARK: 分享
+
+    /// 跟随系统外观画分享图：深色模式下分享出去的也是深色卡片
+    private var prefersDark: Bool {
+        NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    @objc private func copyTodayImage(_ sender: Any?) {
+        guard let item = Book.today(), let img = ShareCard.image(for: item, dark: prefersDark) else { return }
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.writeObjects([img])
+        flashStatus("已复制图片")
+    }
+
+    @objc private func shareToday(_ sender: Any?) {
+        guard let item = Book.today(), let file = ShareCard.file(for: item, dark: prefersDark) else { return }
+        guard let anchor = statusItem?.button else { return }
+        // 菜单栏 app 不在前台，不激活的话分享面板一闪就没
+        NSApp.activate(ignoringOtherApps: true)
+        NSSharingServicePicker(items: [file]).show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
+    }
+
+    /// 小组件上的分享按钮：lifewidget://share。
+    /// 先复制图片（最常见的用法是直接粘贴进聊天窗口），再弹分享面板给想发 AirDrop、邮件的。
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard urls.contains(where: { $0.scheme == "lifewidget" && $0.host == "share" }) else { return }
+        copyTodayImage(nil)
+        shareToday(nil)
+    }
+
+    /// 菜单栏标题临时换成一句提示，两秒后恢复。比弹窗轻 —— 复制这种小事不值得打断人。
+    private func flashStatus(_ text: String) {
+        guard let button = statusItem?.button else { return }
+        let original = appUpdate == nil ? " 今日一条" : " 今日一条 •"
+        button.title = " " + text
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { button.title = original }
     }
 
     @objc private func openSite(_ sender: Any?) {
@@ -682,7 +746,8 @@ enum LoginItem {
 // MARK: - 入口
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
+// AppDelegate 是 @MainActor 的；入口这段代码就跑在主线程上
+let delegate = MainActor.assumeIsolated { AppDelegate() }
 app.delegate = delegate
 app.setActivationPolicy(.accessory)   // 不进 Dock
 app.run()
