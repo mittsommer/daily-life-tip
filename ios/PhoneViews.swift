@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // 手机版的四个页面：今天、翻阅、小组件、设置。
 //
@@ -52,6 +53,8 @@ struct PhoneRoot: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             tabBar
         }
+        // 真 iPhone 上系统会让出状态栏和 Home 条；这里是画出来的手机，要自己让
+        .padding(.top, PhoneMetrics.safeTop)
     }
 
     private var tabBar: some View {
@@ -71,7 +74,7 @@ struct PhoneRoot: View {
             }
         }
         .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.bottom, PhoneMetrics.safeBottom)
         .background(.bar)
         .overlay(alignment: .top) { Divider() }
     }
@@ -81,11 +84,12 @@ struct PhoneRoot: View {
 
 struct TodayTab: View {
     var token: Int
-    @State private var item: Item?
+    /// 直接取，不走 onAppear —— 离屏渲染不会触发 onAppear，那样截出来是空白页（踩过）
+    @State private var item: Item? = Book.today()
     @State private var justCopied = false
 
     var body: some View {
-        ScrollView {
+        PageBody {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     Text(DailyPick.dayKey(for: Date()))
@@ -129,7 +133,6 @@ struct TodayTab: View {
             .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onAppear { item = Book.today() }
     }
 
     private func actions(_ item: Item) -> some View {
@@ -180,6 +183,33 @@ struct TodayTab: View {
     }
 }
 
+/// 是不是在离屏渲染。渲染时交互控件要换成静态外观。
+enum PhoneRenderMode {
+    static let isRendering = CommandLine.arguments.contains("--render")
+}
+
+/// 页面主体。窗口里是可滚动的，离屏渲染时是普通容器 ——
+/// ImageRenderer 不量 ScrollView 的高度，内容整块塌掉，截出来是白页（踩过）。
+struct PageBody<Content: View>: View {
+    var content: () -> Content
+
+    var body: some View {
+        if PhoneRenderMode.isRendering {
+            // 固定成可用的那块大小、顶部对齐再裁掉 —— 内容比屏幕高时，
+            // 弹性 frame 会把它居中，截出来是从列表中间开始的（踩过）
+            GeometryReader { geo in
+                content()
+                    .frame(width: geo.size.width, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+                    .clipped()
+            }
+        } else {
+            ScrollView { content() }
+        }
+    }
+}
+
 /// 手机版看不到 NSApp.effectiveAppearance 在渲染时的取值，统一走这里
 enum PhoneAppearance {
     static var isDark: Bool {
@@ -191,7 +221,7 @@ enum PhoneAppearance {
 
 struct BrowseTab: View {
     @State private var query = ""
-    @State private var payload: BookPayload?
+    @State private var payload: BookPayload? = Book.load()
 
     private var groups: [(chapter: BookPayload.Chapter, items: [Item])] {
         guard let payload else { return [] }
@@ -207,20 +237,28 @@ struct BrowseTab: View {
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary).font(.system(size: 14))
-                TextField("搜标题或内容", text: $query)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 15))
-                if !query.isEmpty {
-                    Button { query = "" } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                    }.buttonStyle(.plain)
+                // 交互控件在离屏渲染里画不出来（会变成一条黄条），渲染时用静态文字顶替
+                if PhoneRenderMode.isRendering {
+                    Text(query.isEmpty ? "搜标题或内容" : query)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                } else {
+                    TextField("搜标题或内容", text: $query)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 15))
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                        }.buttonStyle(.plain)
+                    }
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 9)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
             .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 8)
 
-            ScrollView {
+            PageBody {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                     ForEach(groups, id: \.chapter.num) { group in
                         Section {
@@ -240,7 +278,6 @@ struct BrowseTab: View {
                 .padding(.bottom, 20)
             }
         }
-        .onAppear { payload = Book.load() }
     }
 
     private func row(_ it: Item) -> some View {
@@ -278,7 +315,7 @@ struct WidgetTab: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        ScrollView {
+        PageBody {
             VStack(alignment: .leading, spacing: 18) {
                 Text("手机桌面")
                     .font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary)
@@ -321,12 +358,12 @@ struct WidgetTab: View {
 
 struct SettingsTab: View {
     var onChange: () -> Void
-    @State private var mode: PickMode = .random
-    @State private var count = 0
-    @State private var index = 0
+    @State private var mode: PickMode = Settings.load().mode
+    @State private var count = Book.load()?.items.count ?? 0
+    @State private var index = Book.load().map { TodayPick.index(for: Date(), count: $0.items.count) } ?? 0
 
     var body: some View {
-        ScrollView {
+        PageBody {
             VStack(alignment: .leading, spacing: 22) {
                 group("选条方式") {
                     ForEach(PickMode.allCases, id: \.self) { m in

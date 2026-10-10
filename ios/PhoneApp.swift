@@ -32,7 +32,7 @@ struct PhonePreviewApp: App {
             PhoneFrame { PhoneRoot() }
         }
         .windowResizability(.contentSize)
-        .defaultSize(width: PhoneFrame.outer.width, height: PhoneFrame.outer.height)
+        .defaultSize(width: PhoneMetrics.outer.width, height: PhoneMetrics.outer.height)
         .commands { CommandGroup(replacing: .newItem) {} }
     }
 }
@@ -63,19 +63,25 @@ enum PhoneRender {
     }
 }
 
-/// 手机外框：黑色边框 + 圆角 + 灵动岛，里面装屏幕内容。
-/// 尺寸按 iPhone 15 / 16 的逻辑分辨率（393×852 那个级别）。
-struct PhoneFrame<Content: View>: View {
-    static var outer: CGSize { CGSize(width: screenSize.width + bezel * 2, height: screenSize.height + bezel * 2) }
-    static let screenSize = CGSize(width: 393, height: 852)
+/// iPhone 15 / 16 那一档的逻辑分辨率和安全区
+enum PhoneMetrics {
+    static let screen = CGSize(width: 393, height: 852)
+    /// 状态栏 + 灵动岛
+    static let safeTop: CGFloat = 54
+    /// Home 条
+    static let safeBottom: CGFloat = 26
     static let bezel: CGFloat = 13
+    static var outer: CGSize { CGSize(width: screen.width + bezel * 2, height: screen.height + bezel * 2) }
+}
 
+/// 手机外框：黑色边框 + 圆角 + 灵动岛，里面装屏幕内容。
+struct PhoneFrame<Content: View>: View {
     @Environment(\.colorScheme) private var scheme
     var content: () -> Content
 
     var body: some View {
         content()
-            .frame(width: Self.screenSize.width, height: Self.screenSize.height)
+            .frame(width: PhoneMetrics.screen.width, height: PhoneMetrics.screen.height)
             .background(scheme == .dark ? Color.black : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 52, style: .continuous))
             .overlay(alignment: .top) {
@@ -84,9 +90,9 @@ struct PhoneFrame<Content: View>: View {
                     .frame(width: 118, height: 33)
                     .padding(.top, 11)
             }
-            .padding(Self.bezel)
+            .padding(PhoneMetrics.bezel)
             .background(
-                RoundedRectangle(cornerRadius: 52 + Self.bezel, style: .continuous)
+                RoundedRectangle(cornerRadius: 52 + PhoneMetrics.bezel, style: .continuous)
                     .fill(Color(white: scheme == .dark ? 0.22 : 0.13)))
     }
 }

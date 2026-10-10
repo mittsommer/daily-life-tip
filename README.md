@@ -37,6 +37,7 @@
 ./selftest.sh   # 小组件那一侧的离线自检
 ./install.sh    # 构建并装到 /Applications、注册小组件
 ./screenshot.sh # 重新生成 README 里的截图
+./ios-preview.sh # 手机版界面预览：在电脑上按 iPhone 尺寸跑（真机版需要 Xcode 和开发者账号）
 ```
 
 发布新版本：
