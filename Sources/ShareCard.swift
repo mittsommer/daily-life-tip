@@ -75,7 +75,5 @@ struct ShareCardView: View {
                 startPoint: .topLeading, endPoint: .bottomTrailing))
     }
 
-    private var footnote: String {
-        AppUpdater.repo.isEmpty ? "来自「今日一条」macOS 桌面小组件" : "来自「今日一条」macOS 桌面小组件 · github.com/\(AppUpdater.repo)"
-    }
+    private var footnote: String { "来自「今日一条」· github.com/\(Project.repo)" }
 }

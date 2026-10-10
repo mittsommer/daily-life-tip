@@ -4,16 +4,32 @@ import os
 // 可选的联网更新：从 GitHub 拉最新书稿，解析成条目，写进共享缓存。
 //
 // 内置的那份数据是编译时快照，永远能出内容。这里只负责「书更新了，跟上去」。
-// 拉取失败、解析异常、条目数对不上，一律安静地放弃，保留内置数据 ——
+// 拉取失败、解析异常、条目数明显不对，一律安静地放弃，保留内置数据 ——
 // 宁可显示编译时的那条，也不要写一份半截的书进缓存。
 
 enum RemoteBook {
     static let commitAPI = URL(string: "https://api.github.com/repos/eternity4719/HowToLiveBetter/commits/main")!
     static let rawBase = "https://raw.githubusercontent.com/eternity4719/HowToLiveBetter/main/book/"
 
-    /// 全书条目数。写缓存前拿它校验 —— 书里少解析出一个字段或多出一个新字段，
-    /// 都会让这个数对不上，那就别覆盖用户手上那份好的。
-    static let expectedCount = 672
+    /// 解析结果体检。**不要写死条数**：原作者一直在往书里加条目
+    /// （672 → 675 → …），写死的话每次上游一变，更新就永远失败，
+    /// 而这不是坏事 —— 书变多是正常的，该做的是跟着涨。
+    ///
+    /// 只有「像是解析坏了」才拒收：条数塌到一百以内、比内置的少一大截、
+    /// 或者某一节解析不出条目（多半是正文格式变了，解析器该跟着改）。
+    private static func sanityCheck(_ items: [Item], chapters: [BookPayload.Chapter]) -> String? {
+        guard items.count > 100 else {
+            return "只解析出 \(items.count) 条，太少，像是解析坏了"
+        }
+        let bundled = Book.load(preferCache: false)?.items.count ?? 0
+        if bundled > 0, items.count < bundled / 2 {
+            return "解析出 \(items.count) 条，不到内置 \(bundled) 条的一半，像是漏了一大段"
+        }
+        if let empty = chapters.first(where: { $0.count == 0 }) {
+            return "第 \(empty.num) 节一条都没解析出来"
+        }
+        return nil
+    }
 
     static let log = Logger(subsystem: "com.local.lifewidget", category: "remote")
 
@@ -284,10 +300,10 @@ enum RemoteBook {
                 items.append(contentsOf: parsed)
             }
 
-            // 校验。对不上就不覆盖 —— 多半是书的正文格式变了，这里的解析器该跟着改。
-            guard items.count == expectedCount else {
-                log.error("条目数 \(items.count) ≠ \(expectedCount)，保留内置数据")
-                return .failed("解析出 \(items.count) 条，预期 \(expectedCount) 条，已保留原数据")
+            // 体检。不过就保留内置数据 —— 多半是书的正文格式变了，这里的解析器该跟着改。
+            if let why = sanityCheck(items, chapters: chaptersMeta) {
+                log.error("更新被拦下：\(why, privacy: .public)，保留内置数据")
+                return .failed(why)
             }
 
             let payload = BookPayload(

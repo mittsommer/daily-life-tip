@@ -89,6 +89,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // --update：跑一遍「联网更新书稿」，把结果打出来。
+        // 存在的理由跟 --shuffle 一样：菜单要人手点，这个能在脚本里验。
+        if CommandLine.arguments.contains("--update") {
+            switch RemoteBook.updateIfNeeded(force: true) {
+            case .updated(let commit, let count):
+                print("✅ 更新成功：\(count) 条 @ \(commit)")
+            case .unchanged:
+                print("已经是最新")
+            case .failed(let why):
+                print("❌ 更新失败：\(why)")
+            }
+            dumpToday()
+            NSApp.terminate(nil)
+            return
+        }
+
         // --share-image <路径>：把今天这条的分享图写到文件（加 --dark 画深色）。
         // 存在的理由跟 --shuffle 一样：分享面板要人手点，图片本身能在脚本里验。
         if let i = CommandLine.arguments.firstIndex(of: "--share-image") {

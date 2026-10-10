@@ -9,6 +9,13 @@ import os
 // 所以缓存缺失、App Group 建不出来、app 从没跑过，小组件都照样显示，只是数据停在
 // 编译时的那个版本。这条是刻意的：宁可显示旧的一条，也不要开天窗。
 
+/// 项目自己的仓库。分享图上要标出处，所以放共用层 —— 手机版也有分享，
+/// 但它不该为了这一个字符串去牵扯 Mac 版的自动更新代码（见 Sources/AppUpdater.swift）。
+enum Project {
+    static let repo = "mittsommer/daily-life-tip"
+    static let url = "https://github.com/\(repo)"
+}
+
 enum SharedPaths {
     static let appGroup = "group.com.local.lifewidget"
 
